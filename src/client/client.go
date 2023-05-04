@@ -131,12 +131,12 @@ var Response = []string{
 }`,
 	`deployContract：`,
 	`{
-"status":"ok",
-    "data":{
+	"status":"ok",
+    "transaction":{
 		"from": "0x95b01199edc2d8943ea9edb0ae5908a70bb960f23bc23310ed030e15ecc60b18",
-		"code":"",
+		"hash":"",
     },
-"signature":"0x4c49d393b56749d6a2048f2ef6eaa60dba54b45d78f3d0ce9bccb97f6f1e884b"
+	"ts":1650333610000,
 }`,
 }
 

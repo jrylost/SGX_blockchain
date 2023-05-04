@@ -32,6 +32,11 @@ func EncodeBytesToHexStringWith0x(b []byte) string {
 	return "0x" + hex.EncodeToString(b)
 }
 
+func DecodeHexStringToBytesWith0x(s string) []byte {
+	val, _ := hex.DecodeString(s[2:])
+	return val
+}
+
 func SignJsonWithData(structBody interface{}, k *crypto.KeyPair) ([]byte, error) {
 	jsonBytes, err := json.Marshal(structBody)
 	if err != nil {

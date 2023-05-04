@@ -1,6 +1,7 @@
 package db
 
 import (
+	"SGX_blockchain/src/vm"
 	"container/list"
 	"encoding/hex"
 	"time"
@@ -13,6 +14,9 @@ type memorydb struct {
 	lock map[string]*list.Element
 	lru  *list.List
 	//Database
+	filedb    map[string][]byte
+	kvdb      map[string][]byte
+	contextdb map[string]vm.StorageInterface
 }
 
 func InitMemorydb() *memorydb {
@@ -20,6 +24,9 @@ func InitMemorydb() *memorydb {
 	d.mdb = make(map[string][]byte)
 	d.lock = make(map[string]*list.Element)
 	d.lru = list.New()
+	d.filedb = make(map[string][]byte)
+	d.kvdb = make(map[string][]byte)
+	d.contextdb = make(map[string]vm.StorageInterface)
 	return d
 }
 
@@ -80,4 +87,23 @@ func (d *memorydb) Put(s, v []byte) bool {
 	}
 	d.mdb[key] = v
 	return true
+}
+
+func (d *memorydb) StoreContract(hash, value []byte) bool {
+	key := hex.EncodeToString(hash)
+	d.filedb[key] = value
+	return true
+}
+
+func (d *memorydb) StoreFile(hash string, value []byte) bool {
+	d.filedb[hash] = value
+	return true
+}
+
+func (d *memorydb) RetrieveFile(hash string) []byte {
+	if val, ok := d.filedb[hash]; ok {
+		return val
+	} else {
+		return []byte("")
+	}
 }

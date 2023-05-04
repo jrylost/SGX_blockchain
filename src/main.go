@@ -3,11 +3,6 @@ package main
 import (
 	"SGX_blockchain/src/db"
 	"SGX_blockchain/src/server"
-	"SGX_blockchain/src/utils"
-	"crypto/sha256"
-	"crypto/tls"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -21,40 +16,40 @@ import (
 
 func main() {
 
-	cert, priv := utils.CreateCertificate()
-	hash := sha256.Sum256(cert)
-	report, err := utils.GetRemoteReport(hash[:])
-	tlsCfg := tls.Config{
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{cert},
-				PrivateKey:  priv,
-			},
-		},
-	}
-	http.HandleFunc("/report", func(w http.ResponseWriter, r *http.Request) {
-		type Report struct {
-			Status string `json:"status"`
-			Data   struct {
-				Report string `json:"report"`
-				Cert   string `json:"cert"`
-			} `json:"data"`
-		}
-		rep := base64.StdEncoding.EncodeToString(report)
-		c := base64.StdEncoding.EncodeToString(cert)
-		resp := &Report{
-			Status: "ok",
-			Data: struct {
-				Report string `json:"report"`
-				Cert   string `json:"cert"`
-			}{
-				Report: rep,
-				Cert:   c,
-			},
-		}
-		b, _ := json.Marshal(resp)
-		w.Write(b)
-	})
+	//cert, priv := utils.CreateCertificate()
+	//hash := sha256.Sum256(cert)
+	//report, err := utils.GetRemoteReport(hash[:])
+	//tlsCfg := tls.Config{
+	//	Certificates: []tls.Certificate{
+	//		{
+	//			Certificate: [][]byte{cert},
+	//			PrivateKey:  priv,
+	//		},
+	//	},
+	//}
+	//http.HandleFunc("/report", func(w http.ResponseWriter, r *http.Request) {
+	//	type Report struct {
+	//		Status string `json:"status"`
+	//		Data   struct {
+	//			Report string `json:"report"`
+	//			Cert   string `json:"cert"`
+	//		} `json:"data"`
+	//	}
+	//	rep := base64.StdEncoding.EncodeToString(report)
+	//	c := base64.StdEncoding.EncodeToString(cert)
+	//	resp := &Report{
+	//		Status: "ok",
+	//		Data: struct {
+	//			Report string `json:"report"`
+	//			Cert   string `json:"cert"`
+	//		}{
+	//			Report: rep,
+	//			Cert:   c,
+	//		},
+	//	}
+	//	b, _ := json.Marshal(resp)
+	//	w.Write(b)
+	//})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(""))
@@ -66,10 +61,14 @@ func main() {
 	//testserver := httptest.NewServer(http.HandlerFunc(h.AccountInfoHandler))
 
 	http.HandleFunc("/account/info", h.AccountInfoHandler)
+	http.HandleFunc("/files/store", h.FileStoreHandler)
+	http.HandleFunc("/files/retrieve", h.FileRetrieveHandler)
 
-	httpServer := http.Server{Addr: "127.0.0.1:8888", TLSConfig: &tlsCfg}
+	//httpServer := http.Server{Addr: "127.0.0.1:8888", TLSConfig: &tlsCfg}
+	httpServer := http.Server{Addr: "127.0.0.1:8888"}
 
 	fmt.Println("listening ...")
-	err = httpServer.ListenAndServeTLS("", "")
-	fmt.Println(err)
+	httpServer.ListenAndServe()
+	//err = httpServer.ListenAndServeTLS("", "")
+	//fmt.Println(err)
 }
