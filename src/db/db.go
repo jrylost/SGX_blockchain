@@ -9,4 +9,6 @@ type Database interface {
 	StoreContract(hash, value []byte) bool
 	StoreFile(hash string, value []byte) bool
 	RetrieveFile(hash string) []byte
+	StoreKV(hash string, value []byte) bool
+	RetrieveKV(hash string) []byte
 }

@@ -23,6 +23,7 @@ type ExternalAccount struct {
 	Nonce    int64    `msg:"nonce"`    //计数器，确保交易只执行一次
 	Balance  int64    `msg:"balance"`  //余额
 	File     []string `msg:"file"`     //文件
+	Key      []string `msg:"key"`      //key-value存储
 	Contract []string `msg:"contract"` //智能合约
 }
 
@@ -76,4 +77,12 @@ func (account *ExternalAccount) StoreContract(contractHash []byte) (bool, []byte
 	accountNonceByte := make([]byte, 8)
 	binary.PutVarint(accountNonceByte, account.Nonce)
 	return true, crypto.Keccak256(account.Id, accountNonceByte, contractHash), account.Nonce
+}
+
+func (account *ExternalAccount) StoreKV(key []byte) (bool, []byte, int64) {
+	account.Key = append(account.Key, string(key))
+	account.Nonce++
+	accountNonceByte := make([]byte, 8)
+	binary.PutVarint(accountNonceByte, account.Nonce)
+	return true, crypto.Keccak256(account.Id, accountNonceByte, key), account.Nonce
 }

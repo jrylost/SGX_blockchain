@@ -3,6 +3,7 @@ package server
 import (
 	"SGX_blockchain/src/accounts"
 	"SGX_blockchain/src/utils"
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -18,6 +19,8 @@ import (
 	"SGX_blockchain/src/db"
 
 	"github.com/tidwall/gjson"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 const WrongResponse string = `{"status":"wrong"}`
@@ -259,8 +262,16 @@ func (m *MainHandler) GetAccount(addressCompressed []byte) (*accounts.ExternalAc
 }
 
 func (m *MainHandler) AccountInfoHandler(w http.ResponseWriter, r *http.Request) {
+	var jsonlib = jsoniter.ConfigCompatibleWithStandardLibrary
+
 	body, _ := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(err.Error()))
+		}
+	}(r.Body)
 	switch r.Method {
 	case "POST":
 		address, valid, errString := CheckRequest(body, 2, 2)
@@ -282,7 +293,11 @@ func (m *MainHandler) AccountInfoHandler(w http.ResponseWriter, r *http.Request)
 				Ts: time.Now().UnixMilli(),
 			}
 			w.WriteHeader(http.StatusOK)
-			r, _ := json.Marshal(resp)
+			r, err := jsonlib.Marshal(resp)
+			if err != nil {
+				return
+			}
+
 			w.Write(r)
 		} else {
 			w.WriteHeader(http.StatusForbidden)
@@ -368,6 +383,101 @@ func (m *MainHandler) FileRetrieveHandler(w http.ResponseWriter, r *http.Request
 					FileHash: fileHashString,
 					From:     utils.EncodeBytesToHexStringWith0x(address),
 					Content:  content,
+				},
+				Ts: time.Now().UnixMilli(),
+			}
+
+			w.WriteHeader(http.StatusOK)
+			r, _ := json.Marshal(resp)
+			w.Write(r)
+		} else {
+			w.WriteHeader(http.StatusForbidden)
+			errorString, _ := sjson.Set(WrongResponse, "error", errString)
+			w.Write([]byte(errorString))
+		}
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func (m *MainHandler) KVStoreHandler(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	switch r.Method {
+	case "POST":
+		address, valid, errString := CheckRequest(body, 2, 5)
+		if valid {
+			addressCompressed := crypto.ToCompressedPubKey(address)
+			account, _ := m.GetAccount(addressCompressed)
+
+			keyRaw := gjson.GetBytes(body, "data.key")
+			keyString := keyRaw.String()
+			keyHashBytes := crypto.Keccak256([]byte(keyString))
+
+			_, txHash, nonce := account.StoreKV([]byte(keyString))
+
+			Value := gjson.GetBytes(body, "data.value")
+			valueBytes := []byte(Value.String())
+
+			m.d.StoreKV(utils.EncodeBytesToHexStringWith0x(bytes.Join([][]byte{addressCompressed, keyHashBytes}, []byte(""))), valueBytes)
+
+			resp := &KVStoreResponse{
+				Status: "ok",
+				Transaction: struct {
+					Hash  string `json:"hash"`
+					From  string `json:"from"`
+					Key   string `json:"key"`
+					Nonce int64  `json:"nonce"`
+				}{
+					Hash:  utils.EncodeBytesToHexStringWith0x(txHash),
+					From:  utils.EncodeBytesToHexStringWith0x(address),
+					Key:   keyString,
+					Nonce: nonce,
+				},
+				Ts: time.Now().UnixMilli(),
+			}
+
+			w.WriteHeader(http.StatusOK)
+			r, _ := json.Marshal(resp)
+			w.Write(r)
+		} else {
+			w.WriteHeader(http.StatusForbidden)
+			errorString, _ := sjson.Set(WrongResponse, "error", errString)
+			w.Write([]byte(errorString))
+		}
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func (m *MainHandler) KVRetrieveHandler(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	switch r.Method {
+	case "POST":
+		address, valid, errString := CheckRequest(body, 2, 3)
+		if valid {
+			addressCompressed := crypto.ToCompressedPubKey(address)
+			//account, _ := m.GetAccount(addressCompressed)
+
+			keyRaw := gjson.GetBytes(body, "data.key")
+			keyString := keyRaw.String()
+			keyHashBytes := crypto.Keccak256([]byte(keyString))
+
+			//_, txHash, nonce := account.StoreKV([]byte(keyString))
+
+			valueBytes := m.d.RetrieveKV(utils.EncodeBytesToHexStringWith0x(bytes.Join([][]byte{addressCompressed, keyHashBytes}, []byte(""))))
+
+			resp := &KVRetrieveResponse{
+				Status: "ok",
+				Transaction: struct {
+					From  string `json:"from"`
+					Key   string `json:"key"`
+					Value string `json:"value"`
+				}{
+					From:  utils.EncodeBytesToHexStringWith0x(address),
+					Key:   keyString,
+					Value: string(valueBytes),
 				},
 				Ts: time.Now().UnixMilli(),
 			}

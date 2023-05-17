@@ -107,3 +107,16 @@ func (d *memorydb) RetrieveFile(hash string) []byte {
 		return []byte("")
 	}
 }
+
+func (d *memorydb) StoreKV(hash string, value []byte) bool {
+	d.filedb[hash] = value
+	return true
+}
+
+func (d *memorydb) RetrieveKV(hash string) []byte {
+	if val, ok := d.filedb[hash]; ok {
+		return val
+	} else {
+		return []byte("")
+	}
+}
