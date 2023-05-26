@@ -26,6 +26,42 @@ import (
 const WrongResponse string = `{"status":"wrong"}`
 const SuccessResponse string = `{"status":"ok"}`
 
+type BlockInfoRequest struct {
+	Data struct {
+		Number int64 `json:"number"`
+		Ts     int64 `json:"ts"`
+	} `json:"data"`
+	Signature string `json:"signature"`
+}
+
+type BlockInfoResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		Number       int64    `json:"number"`
+		Transactions []string `json:"transactions"`
+		Count        int64    `json:"count"`
+	} `json:"data"`
+	Ts int64 `json:"ts"`
+}
+
+type TransactionInfoRequest struct {
+	Data struct {
+		Hash string `json:"hash"`
+		Ts   int64  `json:"ts"`
+	} `json:"data"`
+	Signature string `json:"signature"`
+}
+
+type TransactionInfoResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		Hash          string `json:"hash"`
+		Type          string `json:"type"`
+		TransactionTs int64  `json:"transactionTs"`
+	} `json:"data"`
+	Ts int64 `json:"ts"`
+}
+
 type AccountInfoRequest struct {
 	Data struct {
 		Address string `json:"address"`
@@ -261,6 +297,123 @@ func (m *MainHandler) GetAccount(addressCompressed []byte) (*accounts.ExternalAc
 	}
 }
 
+func (m *MainHandler) BlockInfoHandler(w http.ResponseWriter, r *http.Request) {
+	var jsonlib = jsoniter.ConfigCompatibleWithStandardLibrary
+
+	body, _ := io.ReadAll(r.Body)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(err.Error()))
+		}
+	}(r.Body)
+	switch r.Method {
+	case "POST":
+		var valid = true
+		var errString string
+		//address, valid, errString := CheckRequest(body, 2, 2)
+		if gjson.GetBytes(body, "@keys.#").Int() != 2 {
+			valid = false
+			errString = "Key count doesn't match!"
+		}
+		//一级字段下key的数量
+
+		data := gjson.GetBytes(body, "data")
+		if !data.Exists() || gjson.GetBytes(body, "data.@keys.#").Int() != 2 {
+			valid = false
+			errString = "Data count doesn't match!"
+		}
+
+		//valid := true
+		if valid {
+			//addressCompressed := crypto.ToCompressedPubKey(address)
+			//account, _ := m.GetAccount(addressCompressed)
+			number := gjson.GetBytes(body, "data.number").Int()
+			txs := m.d.GetTxFromBlock(number)
+			resp := &BlockInfoResponse{
+				Status: "ok",
+				Data: struct {
+					Number       int64    `json:"number"`
+					Transactions []string `json:"transactions"`
+					Count        int64    `json:"count"`
+				}{
+					Number:       number,
+					Transactions: txs,
+					Count:        int64(len(txs)),
+				},
+				Ts: time.Now().UnixMilli(),
+			}
+			w.WriteHeader(http.StatusOK)
+			r, err := jsonlib.Marshal(resp)
+			if err != nil {
+				return
+			}
+
+			w.Write(r)
+		} else {
+			w.WriteHeader(http.StatusForbidden)
+			errorString, _ := sjson.Set(WrongResponse, "error", errString)
+			w.Write([]byte(errorString))
+		}
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func (m *MainHandler) TransactionInfoHandler(w http.ResponseWriter, r *http.Request) {
+	var jsonlib = jsoniter.ConfigCompatibleWithStandardLibrary
+	//fmt.Println("txinfo here")
+	body, _ := io.ReadAll(r.Body)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(err.Error()))
+		}
+	}(r.Body)
+	switch r.Method {
+	case "POST":
+		var valid = true
+		var errString string
+		//address, valid, errString := CheckRequest(body, 2, 2)
+		if gjson.GetBytes(body, "@keys.#").Int() != 2 {
+			valid = false
+			errString = "Key count doesn't match!"
+		}
+		//一级字段下key的数量
+
+		data := gjson.GetBytes(body, "data")
+		if !data.Exists() || gjson.GetBytes(body, "data.@keys.#").Int() != 2 {
+			valid = false
+			errString = "Data count doesn't match!"
+		}
+
+		//valid := true
+		if valid {
+			//addressCompressed := crypto.ToCompressedPubKey(address)
+			//account, _ := m.GetAccount(addressCompressed)
+			txhash := gjson.GetBytes(body, "data.hash").String()
+			txs := m.d.GetTx(txhash)
+			resp, _ := sjson.Set(txs, "ts", time.Now().UnixMilli())
+
+			w.WriteHeader(http.StatusOK)
+			r, err := jsonlib.Marshal(resp)
+			if err != nil {
+				return
+			}
+
+			w.Write(r)
+		} else {
+			w.WriteHeader(http.StatusForbidden)
+			errorString, _ := sjson.Set(WrongResponse, "error", errString)
+			w.Write([]byte(errorString))
+		}
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
 func (m *MainHandler) AccountInfoHandler(w http.ResponseWriter, r *http.Request) {
 	var jsonlib = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -320,6 +473,11 @@ func (m *MainHandler) FileStoreHandler(w http.ResponseWriter, r *http.Request) {
 			account, _ := m.GetAccount(addressCompressed)
 
 			fileHashRaw := gjson.GetBytes(body, "data.fileHash")
+			if !fileHashRaw.Exists() {
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte(`{"status":"wrong","error":"no fileHash"}`))
+				return
+			}
 			fileHashString := fileHashRaw.String()
 			fileHashBytes := utils.DecodeHexStringToBytesWith0x(fileHashString)
 
@@ -329,6 +487,8 @@ func (m *MainHandler) FileStoreHandler(w http.ResponseWriter, r *http.Request) {
 			contentBytes, _ := base64.StdEncoding.DecodeString(Content.String())
 
 			m.d.StoreFile(utils.EncodeBytesToHexStringWith0x(addressCompressed)+fileHashString, contentBytes)
+			ctime := time.Now().UnixMilli()
+			txHashWith0x := utils.EncodeBytesToHexStringWith0x(txHash)
 
 			resp := &FileStoreResponse{
 				Status: "ok",
@@ -338,14 +498,16 @@ func (m *MainHandler) FileStoreHandler(w http.ResponseWriter, r *http.Request) {
 					From     string `json:"from"`
 					Nonce    int64  `json:"nonce"`
 				}{
-					Hash:     utils.EncodeBytesToHexStringWith0x(txHash),
+					Hash:     txHashWith0x,
 					FileHash: fileHashString,
 					From:     utils.EncodeBytesToHexStringWith0x(address),
 					Nonce:    nonce},
-				Ts: time.Now().UnixMilli(),
+				Ts: ctime,
 			}
 			w.WriteHeader(http.StatusOK)
 			r, _ := json.Marshal(resp)
+			m.d.StoreTxToBlock(ctime, txHashWith0x)
+			m.d.StoreTx(txHashWith0x, "File store", ctime)
 			w.Write(r)
 		} else {
 			w.WriteHeader(http.StatusForbidden)
@@ -420,6 +582,8 @@ func (m *MainHandler) KVStoreHandler(w http.ResponseWriter, r *http.Request) {
 			valueBytes := []byte(Value.String())
 
 			m.d.StoreKV(utils.EncodeBytesToHexStringWith0x(bytes.Join([][]byte{addressCompressed, keyHashBytes}, []byte(""))), valueBytes)
+			ctime := time.Now().UnixMilli()
+			txHashWith0x := utils.EncodeBytesToHexStringWith0x(txHash)
 
 			resp := &KVStoreResponse{
 				Status: "ok",
@@ -429,16 +593,19 @@ func (m *MainHandler) KVStoreHandler(w http.ResponseWriter, r *http.Request) {
 					Key   string `json:"key"`
 					Nonce int64  `json:"nonce"`
 				}{
-					Hash:  utils.EncodeBytesToHexStringWith0x(txHash),
+					Hash:  txHashWith0x,
 					From:  utils.EncodeBytesToHexStringWith0x(address),
 					Key:   keyString,
 					Nonce: nonce,
 				},
-				Ts: time.Now().UnixMilli(),
+				Ts: ctime,
 			}
 
 			w.WriteHeader(http.StatusOK)
 			r, _ := json.Marshal(resp)
+
+			m.d.StoreTxToBlock(ctime, txHashWith0x)
+			m.d.StoreTx(txHashWith0x, "KV store", ctime)
 			w.Write(r)
 		} else {
 			w.WriteHeader(http.StatusForbidden)

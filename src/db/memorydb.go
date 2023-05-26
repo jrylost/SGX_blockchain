@@ -4,6 +4,7 @@ import (
 	"SGX_blockchain/src/vm"
 	"container/list"
 	"encoding/hex"
+	"encoding/json"
 	"time"
 )
 
@@ -17,6 +18,8 @@ type memorydb struct {
 	filedb    map[string][]byte
 	kvdb      map[string][]byte
 	contextdb map[string]vm.StorageInterface
+	blockdb   map[int64][]string
+	txdb      map[string]string
 }
 
 func InitMemorydb() *memorydb {
@@ -27,6 +30,8 @@ func InitMemorydb() *memorydb {
 	d.filedb = make(map[string][]byte)
 	d.kvdb = make(map[string][]byte)
 	d.contextdb = make(map[string]vm.StorageInterface)
+	d.blockdb = make(map[int64][]string)
+	d.txdb = make(map[string]string)
 	return d
 }
 
@@ -118,5 +123,70 @@ func (d *memorydb) RetrieveKV(hash string) []byte {
 		return val
 	} else {
 		return []byte("")
+	}
+}
+
+func (d *memorydb) StoreTxToBlock(ts int64, hash string) {
+	ts = ts / 1000
+	if val, ok := d.blockdb[ts]; ok {
+		d.blockdb[ts] = append(val, hash)
+	} else {
+		d.blockdb[ts] = []string{hash}
+	}
+}
+
+func (d *memorydb) GetTxFromBlock(ts int64) []string {
+	if val, ok := d.blockdb[ts]; ok {
+		return val
+	} else {
+		return []string{}
+	}
+}
+
+func (d *memorydb) StoreTx(hash string, txtype string, txTs int64) {
+	resstruct := struct {
+		Status string `json:"status"`
+		Data   struct {
+			Hash          string `json:"hash"`
+			Type          string `json:"type"`
+			TransactionTs int64  `json:"transactionTs"`
+		} `json:"data"`
+		Ts int64 `json:"ts"`
+	}{
+		Status: "ok",
+		Data: struct {
+			Hash          string `json:"hash"`
+			Type          string `json:"type"`
+			TransactionTs int64  `json:"transactionTs"`
+		}{Hash: hash, Type: txtype, TransactionTs: txTs},
+		Ts: 0,
+	}
+	resstr, _ := json.Marshal(resstruct)
+	d.txdb[hash] = string(resstr)
+}
+
+func (d *memorydb) GetTx(hash string) string {
+	if val, ok := d.txdb[hash]; ok {
+		return val
+	} else {
+		resstruct := struct {
+			Status string `json:"status"`
+			Data   struct {
+				Hash          string `json:"hash"`
+				Type          string `json:"type"`
+				TransactionTs int64  `json:"transactionTs"`
+			} `json:"data"`
+			Ts int64 `json:"ts"`
+		}{
+			Status: "error",
+			Data: struct {
+				Hash          string `json:"hash"`
+				Type          string `json:"type"`
+				TransactionTs int64  `json:"transactionTs"`
+			}{Hash: hash, Type: "", TransactionTs: 0},
+			Ts: 0,
+		}
+		resstr, _ := json.Marshal(resstruct)
+		return string(resstr)
 	}
 }

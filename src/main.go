@@ -90,6 +90,8 @@ func main() {
 	http.HandleFunc("/files/retrieve", logMiddleware(h.FileRetrieveHandler))
 	http.HandleFunc("/kv/store", logMiddleware(h.KVStoreHandler))
 	http.HandleFunc("/kv/retrieve", logMiddleware(h.KVRetrieveHandler))
+	http.HandleFunc("/block/info", logMiddleware(h.BlockInfoHandler))
+	http.HandleFunc("/transaction/info", logMiddleware(h.TransactionInfoHandler))
 
 	//httpServer := http.Server{Addr: "127.0.0.1:8888", TLSConfig: &tlsCfg}
 	httpServer := http.Server{Addr: "127.0.0.1:8888"}

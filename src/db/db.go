@@ -11,4 +11,8 @@ type Database interface {
 	RetrieveFile(hash string) []byte
 	StoreKV(hash string, value []byte) bool
 	RetrieveKV(hash string) []byte
+	StoreTxToBlock(ts int64, hash string)
+	StoreTx(hash string, txtype string, txTs int64)
+	GetTxFromBlock(ts int64) []string
+	GetTx(hash string) string
 }
