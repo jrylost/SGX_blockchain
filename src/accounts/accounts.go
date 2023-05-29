@@ -27,7 +27,7 @@ type ExternalAccount struct {
 	Contract []string `msg:"contract"` //智能合约
 }
 
-// 传入id以及余额，创建一个新的帐号
+// CreateAccount 传入id以及余额，创建一个新的帐号
 func CreateAccount(id []byte, balance int64) *ExternalAccount {
 	return &ExternalAccount{
 		Id:      id,
@@ -37,14 +37,14 @@ func CreateAccount(id []byte, balance int64) *ExternalAccount {
 	}
 }
 
-// 传入id以及余额，创建一个新的帐号
+// NewAccount 传入id以及余额，创建一个新的帐号
 func NewAccount() *ExternalAccount {
 	return &ExternalAccount{
 		//File: make([]string),
 	}
 }
 
-// ExternalAccount给recipient转账，金额为amount
+// Transfer ExternalAccount给recipient转账，金额为amount
 func (account *ExternalAccount) Transfer(recipient *ExternalAccount, amount int64) (bool, []byte) {
 	if account.Balance < amount {
 		return false, []byte("Insufficient funds!")

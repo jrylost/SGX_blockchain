@@ -73,7 +73,7 @@ func TestAccountsInfoHandler(t *testing.T) {
 	}
 	defer testserver.Close()
 
-	bodyBytes, err := utils.SignJsonWithData(accountsRequest, keypair)
+	bodyBytes, err := keypair.SignJsonWithData(accountsRequest)
 	if err != nil {
 		fmt.Println("Wrong accountsRequest")
 	}
@@ -135,7 +135,7 @@ func TestFileStoreHandler(t *testing.T) {
 	fmt.Println(filecontentbase64, "base64")
 	defer testserver.Close()
 
-	bodyBytes, err := utils.SignJsonWithData(filestorerequest, keypair)
+	bodyBytes, err := keypair.SignJsonWithData(filestorerequest)
 	if err != nil {
 		fmt.Println("Wrong accountsRequest")
 	}
@@ -161,7 +161,7 @@ func TestFileStoreHandler(t *testing.T) {
 		},
 		Signature: "",
 	}
-	bodyBytes2, err := utils.SignJsonWithData(fileretrieverequest, keypair)
+	bodyBytes2, err := keypair.SignJsonWithData(fileretrieverequest)
 	if err != nil {
 		fmt.Println("Wrong accountsRequest")
 	}
@@ -216,7 +216,7 @@ func BenchmarkAccountInfoRequest(b *testing.B) {
 	}
 	defer testserver.Close()
 
-	bodyBytes, err := utils.SignJsonWithData(accountsRequest, keypair)
+	bodyBytes, err := keypair.SignJsonWithData(accountsRequest)
 	if err != nil {
 		fmt.Println("Wrong accountsRequest")
 	}

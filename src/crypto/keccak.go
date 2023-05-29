@@ -21,6 +21,7 @@ func NewKeccakState() KeccakState {
 // Keccak256 calculates and returns the Keccak256 hash of the input data.
 func Keccak256(data ...[]byte) []byte {
 	b := make([]byte, 32)
+	//var b = []byte{}
 	d := NewKeccakState()
 	for _, b := range data {
 		//fmt.Println(b)
@@ -28,4 +29,15 @@ func Keccak256(data ...[]byte) []byte {
 	}
 	d.Read(b)
 	return b
+}
+
+func sha256(data ...[]byte) []byte {
+	d := sha3.New256()
+	//res := make([]byte, 32)
+	for _, b := range data {
+		//fmt.Println(b)
+		d.Sum(b)
+	}
+	res := d.Sum([]byte{})
+	return res
 }

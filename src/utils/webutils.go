@@ -7,6 +7,8 @@ import (
 	"net/http"
 )
 
+// HTTP 请求，主要用于客户端测试
+
 const jsonContentType string = "application/json"
 
 // HttpPost

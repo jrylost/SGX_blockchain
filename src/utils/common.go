@@ -1,13 +1,8 @@
 package utils
 
 import (
-	"SGX_blockchain/src/crypto"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/sjson"
 )
 
 func GenerateRandomBytes(length int64) []byte {
@@ -35,24 +30,4 @@ func EncodeBytesToHexStringWith0x(b []byte) string {
 func DecodeHexStringToBytesWith0x(s string) []byte {
 	val, _ := hex.DecodeString(s[2:])
 	return val
-}
-
-func SignJsonWithData(structBody interface{}, k *crypto.KeyPair) ([]byte, error) {
-	jsonBytes, err := json.Marshal(structBody)
-	if err != nil {
-		return []byte(""), err
-	}
-	data := gjson.GetBytes(jsonBytes, "data")
-	if !data.Exists() {
-		return []byte(""), errors.New("No data field!")
-	}
-	body := []byte(data.String())
-	sig := k.SignMessage(body)
-
-	bodyBytes, err := sjson.SetBytes(jsonBytes, "signature", EncodeBytesToHexStringWith0x(sig))
-	if err != nil {
-		return []byte(""), errors.New("Set signature error!")
-	}
-	return bodyBytes, nil
-
 }

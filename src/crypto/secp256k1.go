@@ -1,6 +1,8 @@
 package crypto
 
 import (
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
@@ -60,6 +62,7 @@ func EthereumSignatureToDER(sig []byte) []byte {
 
 func VerifyHashSignature(sig, hash, pubK []byte) bool {
 	pubKey, _ := btcec.ParsePubKey(pubK)
+	//fmt.Println(hex.EncodeToString(sig))
 	signature, err := ecdsa.ParseDERSignature(sig)
 	if err != nil {
 		fmt.Println(err)
@@ -75,15 +78,21 @@ func VerifyMessageSignature(sig, pubK []byte, message ...[]byte) bool {
 type KeyPair struct {
 	PriK       []byte
 	PubK       []byte
+	Address    []byte
 	PrivateKey *btcec.PrivateKey
 	PublicKey  *btcec.PublicKey
 }
 
-func Initialize(pk []byte) *KeyPair {
+func Initialize(pk []byte) (*KeyPair, error) {
+	//var err error
+	if len(pk) != 32 {
+		return nil, errors.New("private key length is invalid")
+	}
 	k := &KeyPair{PriK: pk}
 	k.PrivateKey, k.PublicKey = btcec.PrivKeyFromBytes(pk)
 	k.PubK = k.PublicKey.SerializeCompressed()
-	return k
+	k.Address = Keccak256(k.PublicKey.SerializeUncompressed()[1:])[12:]
+	return k, nil
 }
 
 func NewKeyPair() (*KeyPair, error) {
@@ -91,8 +100,9 @@ func NewKeyPair() (*KeyPair, error) {
 	var err error
 	k.PrivateKey, err = btcec.NewPrivateKey()
 	k.PublicKey = k.PrivateKey.PubKey()
-	k.PubK = k.PublicKey.SerializeCompressed()
 	k.PriK = k.PrivateKey.Serialize()
+	k.PubK = k.PublicKey.SerializeCompressed()
+	k.Address = Keccak256(k.PublicKey.SerializeUncompressed()[1:])[24:]
 	return k, err
 }
 
@@ -102,11 +112,18 @@ func (k *KeyPair) SignEthereumHash(hash []byte) []byte {
 		fmt.Println("Sign error")
 	}
 	//sig := ecdsa.Sign(k.PrivateKey, hash)
-	return append(sig, sig[0]-0x1c)[1:]
+	return append(sig, sig[0])[1:]
+}
+
+func EncodeBytesToHexStringWith0x(b []byte) string {
+	return "0x" + hex.EncodeToString(b)
 }
 
 func (k *KeyPair) SignMessage(message ...[]byte) []byte {
+	//test := sha3.New256()
+	//test.Write()
 	hash := Keccak256(message...)
+	fmt.Println(EncodeBytesToHexStringWith0x(hash))
 	return k.SignEthereumHash(hash)
 }
 
