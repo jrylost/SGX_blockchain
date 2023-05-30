@@ -94,7 +94,7 @@ func main() {
 	http.HandleFunc("/transaction/info", logMiddleware(h.TransactionInfoHandler))
 
 	//httpServer := http.Server{Addr: "127.0.0.1:8888", TLSConfig: &tlsCfg}
-	httpServer := http.Server{Addr: "127.0.0.1:8888"}
+	httpServer := http.Server{Addr: "0.0.0.0:8888"}
 
 	fmt.Println("listening ...")
 	httpServer.ListenAndServe()

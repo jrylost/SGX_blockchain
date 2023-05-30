@@ -6,7 +6,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
+	"log"
+
+	//"encoding/json"
 	"io"
 	"strconv"
 
@@ -23,8 +25,12 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-const WrongResponse string = `{"status":"wrong"}`
-const SuccessResponse string = `{"status":"ok"}`
+const WrongResponse string = `{"status":"error"}`
+const JsonMarshalErrorResponse string = `{"status":"error","error":"json marshal error"}`
+
+//const SuccessResponse string = `{"status":"ok"}`
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type BlockInfoRequest struct {
 	Data struct {
@@ -232,7 +238,7 @@ type ContractCallResponse struct {
 //	info string
 //}
 
-const jsonString = `{"name":"last"}`
+//const jsonString = `{"name":"last"}`
 
 // func verify
 type MainHandler struct {
@@ -243,46 +249,51 @@ func NewHandler(d db.Database) *MainHandler {
 	return &MainHandler{d}
 }
 
-// CheckRequest
+// CheckRequestWithAddress
 // @Description 检查request body的合法性：1.格式；2.签名；
 // @Author jerry 2022-09-24 06:46:57 ${time}
 // @Param requestBody
 // @Param count 一级字段下key的数量
 // @Param dataCount data字段下key的数量
 // @Return bool
-func CheckRequest(requestBody []byte, count, dataCount int64) (address []byte, valid bool, errString string) {
+func CheckRequestWithAddress(requestBody []byte, count, dataCount int64) ([]byte, bool, string) {
 	if !gjson.ValidBytes(requestBody) {
-		return nil, false, "Invalid json syntax!"
+		return nil, false, "invalid json syntax"
 	}
 	//是否是json格式
 
 	if gjson.GetBytes(requestBody, "@keys.#").Int() != count {
-		return nil, false, "Key count doesn't match!"
+		return nil, false, "key count error"
 	}
 	//一级字段下key的数量
 
 	data := gjson.GetBytes(requestBody, "data")
 	if !data.Exists() || gjson.GetBytes(requestBody, "data.@keys.#").Int() != dataCount {
-		return nil, false, "Data count doesn't match! " + gjson.GetBytes(requestBody, "data.@keys.#").String() + "!=" + strconv.Itoa(int(dataCount))
+		return nil, false, "data count error " + gjson.GetBytes(requestBody, "data.@keys.#").String() + "!=" + strconv.Itoa(int(dataCount))
 	}
 	//data字段下key的数量
 	dataMap := data.Map()
+	var address []byte
+	var err error
 	if value, exists := dataMap["address"]; exists {
-		address, _ = hex.DecodeString(value.String()[2:])
+		address, err = hex.DecodeString(value.String()[2:])
 	} else {
-		address, _ = hex.DecodeString(dataMap["from"].String()[2:])
+		address, err = hex.DecodeString(dataMap["from"].String()[2:])
+	}
+	if err != nil {
+		return nil, false, "hex address decoding error"
 	}
 	sig := gjson.GetBytes(requestBody, "signature")
 
 	if len(address) != 65 && len(address) != 33 {
-		return nil, false, "Address Length doesn't match!"
+		return nil, false, "address length error"
 	}
 	if !sig.Exists() {
-		return nil, false, "No signature!"
+		return nil, false, "no signature"
 	}
 	signature, _ := hex.DecodeString(sig.String()[2:])
 	sigDER := crypto.EthereumSignatureToDER(signature)
-	return address, crypto.VerifyMessageSignature(sigDER, address, []byte(data.String())), "Signature verification failed"
+	return address, crypto.VerifyMessageSignature(sigDER, address, []byte(data.String())), "signature verification error"
 	//  若验证成功，则string返回值无意义，因此直接返回失败
 }
 
@@ -292,37 +303,40 @@ func (m *MainHandler) GetAccount(addressCompressed []byte) (*accounts.ExternalAc
 		return accounts.NewAccount(), false
 	} else {
 		account := &accounts.ExternalAccount{}
-		account.UnmarshalMsg(val)
+		_, err := account.UnmarshalMsg(val)
+		if err != nil {
+			return nil, false
+		}
 		return account, true
 	}
 }
 
 func (m *MainHandler) BlockInfoHandler(w http.ResponseWriter, r *http.Request) {
-	var jsonlib = jsoniter.ConfigCompatibleWithStandardLibrary
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err.Error())
+	}
 
-	body, _ := io.ReadAll(r.Body)
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(err.Error()))
-		}
-	}(r.Body)
+	err = r.Body.Close()
+	if err != nil {
+		log.Println(err.Error())
+	}
+
 	switch r.Method {
 	case "POST":
 		var valid = true
 		var errString string
-		//address, valid, errString := CheckRequest(body, 2, 2)
+		//address, valid, errString := CheckRequestWithAddress(body, 2, 2)
 		if gjson.GetBytes(body, "@keys.#").Int() != 2 {
 			valid = false
-			errString = "Key count doesn't match!"
+			errString = "key count error"
 		}
 		//一级字段下key的数量
 
 		data := gjson.GetBytes(body, "data")
 		if !data.Exists() || gjson.GetBytes(body, "data.@keys.#").Int() != 2 {
 			valid = false
-			errString = "Data count doesn't match!"
+			errString = "data count error"
 		}
 
 		//valid := true
@@ -344,17 +358,28 @@ func (m *MainHandler) BlockInfoHandler(w http.ResponseWriter, r *http.Request) {
 				},
 				Ts: time.Now().UnixMilli(),
 			}
-			w.WriteHeader(http.StatusOK)
-			r, err := jsonlib.Marshal(resp)
+			r, err := json.Marshal(resp)
 			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, errWrite := w.Write([]byte(JsonMarshalErrorResponse))
+				if errWrite != nil {
+					log.Println(errWrite.Error())
+				}
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 
-			w.Write(r)
+			_, errWrite := w.Write(r)
+			if errWrite != nil {
+				log.Println(errWrite.Error())
+			}
 		} else {
 			w.WriteHeader(http.StatusForbidden)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
-			w.Write([]byte(errorString))
+			_, errWrite := w.Write([]byte(errorString))
+			if errWrite != nil {
+				log.Println(errWrite.Error())
+			}
 		}
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -362,8 +387,6 @@ func (m *MainHandler) BlockInfoHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *MainHandler) TransactionInfoHandler(w http.ResponseWriter, r *http.Request) {
-	var jsonlib = jsoniter.ConfigCompatibleWithStandardLibrary
-	//fmt.Println("txinfo here")
 	body, _ := io.ReadAll(r.Body)
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -376,17 +399,17 @@ func (m *MainHandler) TransactionInfoHandler(w http.ResponseWriter, r *http.Requ
 	case "POST":
 		var valid = true
 		var errString string
-		//address, valid, errString := CheckRequest(body, 2, 2)
+		//address, valid, errString := CheckRequestWithAddress(body, 2, 2)
 		if gjson.GetBytes(body, "@keys.#").Int() != 2 {
 			valid = false
-			errString = "Key count doesn't match!"
+			errString = "key count error"
 		}
 		//一级字段下key的数量
 
 		data := gjson.GetBytes(body, "data")
 		if !data.Exists() || gjson.GetBytes(body, "data.@keys.#").Int() != 2 {
 			valid = false
-			errString = "Data count doesn't match!"
+			errString = "data count error"
 		}
 
 		//valid := true
@@ -398,7 +421,7 @@ func (m *MainHandler) TransactionInfoHandler(w http.ResponseWriter, r *http.Requ
 			resp, _ := sjson.Set(txs, "ts", time.Now().UnixMilli())
 
 			w.WriteHeader(http.StatusOK)
-			r, err := jsonlib.Marshal(resp)
+			r, err := json.Marshal(resp)
 			if err != nil {
 				return
 			}
@@ -427,7 +450,7 @@ func (m *MainHandler) AccountInfoHandler(w http.ResponseWriter, r *http.Request)
 	}(r.Body)
 	switch r.Method {
 	case "POST":
-		address, valid, errString := CheckRequest(body, 2, 2)
+		address, valid, errString := CheckRequestWithAddress(body, 2, 2)
 		if valid {
 			addressCompressed := crypto.ToCompressedPubKey(address)
 			account, _ := m.GetAccount(addressCompressed)
@@ -467,7 +490,7 @@ func (m *MainHandler) FileStoreHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	switch r.Method {
 	case "POST":
-		address, valid, errString := CheckRequest(body, 2, 5)
+		address, valid, errString := CheckRequestWithAddress(body, 2, 5)
 		if valid {
 			addressCompressed := crypto.ToCompressedPubKey(address)
 			account, _ := m.GetAccount(addressCompressed)
@@ -475,7 +498,7 @@ func (m *MainHandler) FileStoreHandler(w http.ResponseWriter, r *http.Request) {
 			fileHashRaw := gjson.GetBytes(body, "data.fileHash")
 			if !fileHashRaw.Exists() {
 				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte(`{"status":"wrong","error":"no fileHash"}`))
+				w.Write([]byte(`{"status":"wrong","error":"fileHash missing"}`))
 				return
 			}
 			fileHashString := fileHashRaw.String()
@@ -524,7 +547,7 @@ func (m *MainHandler) FileRetrieveHandler(w http.ResponseWriter, r *http.Request
 	defer r.Body.Close()
 	switch r.Method {
 	case "POST":
-		address, valid, errString := CheckRequest(body, 2, 3)
+		address, valid, errString := CheckRequestWithAddress(body, 2, 3)
 		if valid {
 			addressCompressed := crypto.ToCompressedPubKey(address)
 			//account, _ := m.GetAccount(addressCompressed)
@@ -567,7 +590,7 @@ func (m *MainHandler) KVStoreHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	switch r.Method {
 	case "POST":
-		address, valid, errString := CheckRequest(body, 2, 5)
+		address, valid, errString := CheckRequestWithAddress(body, 2, 5)
 		if valid {
 			addressCompressed := crypto.ToCompressedPubKey(address)
 			account, _ := m.GetAccount(addressCompressed)
@@ -622,7 +645,7 @@ func (m *MainHandler) KVRetrieveHandler(w http.ResponseWriter, r *http.Request) 
 	defer r.Body.Close()
 	switch r.Method {
 	case "POST":
-		address, valid, errString := CheckRequest(body, 2, 3)
+		address, valid, errString := CheckRequestWithAddress(body, 2, 3)
 		if valid {
 			addressCompressed := crypto.ToCompressedPubKey(address)
 			//account, _ := m.GetAccount(addressCompressed)
@@ -667,7 +690,7 @@ func (m *MainHandler) ContractDeployHandler(w http.ResponseWriter, r *http.Reque
 	defer r.Body.Close()
 	switch r.Method {
 	case "POST":
-		address, valid, errString := CheckRequest(body, 2, 2)
+		address, valid, errString := CheckRequestWithAddress(body, 2, 2)
 		if !valid {
 			w.WriteHeader(http.StatusForbidden)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
