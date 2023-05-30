@@ -6,7 +6,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"log"
+	"sync"
 
 	//"encoding/json"
 	"io"
@@ -31,6 +33,7 @@ const JsonMarshalErrorResponse string = `{"status":"error","error":"json marshal
 //const SuccessResponse string = `{"status":"ok"}`
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var mu sync.Mutex
 
 type BlockInfoRequest struct {
 	Data struct {
@@ -311,6 +314,22 @@ func (m *MainHandler) GetAccount(addressCompressed []byte) (*accounts.ExternalAc
 	}
 }
 
+//func (m *MainHandler) SaveAccount(addressCompressed []byte, *accounts.ExternalAccount) bool {
+//	val, exists := m.d.Get(addressCompressed)
+//	m.d.
+//
+//	if !exists {
+//		return  false
+//	} else {
+//		account := &accounts.ExternalAccount{}
+//		_, err := account.UnmarshalMsg(val)
+//		if err != nil {
+//			return nil, false
+//		}
+//		return account, true
+//	}
+//}
+
 func (m *MainHandler) BlockInfoHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -527,10 +546,19 @@ func (m *MainHandler) FileStoreHandler(w http.ResponseWriter, r *http.Request) {
 					Nonce:    nonce},
 				Ts: ctime,
 			}
+			fmt.Println("Nonce here:", account.Nonce)
 			w.WriteHeader(http.StatusOK)
 			r, _ := json.Marshal(resp)
 			m.d.StoreTxToBlock(ctime, txHashWith0x)
 			m.d.StoreTx(txHashWith0x, "File store", ctime)
+			//accountjsonrefreshed, _ := account.MarshalMsg(nil)
+			accountjsonrefreshed, err := account.MarshalMsg(nil)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+			mu.Lock()
+			m.d.Put(addressCompressed, accountjsonrefreshed)
+			mu.Unlock()
 			w.Write(r)
 		} else {
 			w.WriteHeader(http.StatusForbidden)
@@ -629,6 +657,14 @@ func (m *MainHandler) KVStoreHandler(w http.ResponseWriter, r *http.Request) {
 
 			m.d.StoreTxToBlock(ctime, txHashWith0x)
 			m.d.StoreTx(txHashWith0x, "KV store", ctime)
+			accountjsonrefreshed, err := account.MarshalMsg(nil)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+			mu.Lock()
+			m.d.Put(addressCompressed, accountjsonrefreshed)
+			mu.Unlock()
+			//accountjsonrefreshed, _ := json.Marshal(account)
 			w.Write(r)
 		} else {
 			w.WriteHeader(http.StatusForbidden)

@@ -66,6 +66,7 @@ func (account *ExternalAccount) Transfer(recipient *ExternalAccount, amount int6
 func (account *ExternalAccount) StoreFile(fileHash []byte) (bool, []byte, int64) {
 	account.File = append(account.File, hex.EncodeToString(fileHash))
 	account.Nonce++
+	account.Count++
 	accountNonceByte := make([]byte, 8)
 	binary.PutVarint(accountNonceByte, account.Nonce)
 	return true, crypto.Keccak256(account.Id, accountNonceByte, fileHash), account.Nonce
@@ -74,6 +75,7 @@ func (account *ExternalAccount) StoreFile(fileHash []byte) (bool, []byte, int64)
 func (account *ExternalAccount) StoreContract(contractHash []byte) (bool, []byte, int64) {
 	account.File = append(account.File, hex.EncodeToString(contractHash))
 	account.Nonce++
+
 	accountNonceByte := make([]byte, 8)
 	binary.PutVarint(accountNonceByte, account.Nonce)
 	return true, crypto.Keccak256(account.Id, accountNonceByte, contractHash), account.Nonce

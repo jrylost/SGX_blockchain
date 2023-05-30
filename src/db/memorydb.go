@@ -86,10 +86,10 @@ func (d *memorydb) Get(b []byte) ([]byte, bool) {
 
 func (d *memorydb) Put(s, v []byte) bool {
 	key := hex.EncodeToString(s)
-	b := d.ReleaseLock(s)
-	if !b {
-		return false
-	}
+	//b := d.ReleaseLock(s)
+	//if !b {
+	//	return false
+	//}
 	d.mdb[key] = v
 	return true
 }
