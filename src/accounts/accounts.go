@@ -72,13 +72,21 @@ func (account *ExternalAccount) StoreFile(fileHash []byte) (bool, []byte, int64)
 	return true, crypto.Keccak256(account.Id, accountNonceByte, fileHash), account.Nonce
 }
 
-func (account *ExternalAccount) StoreContract(contractHash []byte) (bool, []byte, int64) {
+func (account *ExternalAccount) CallContract(contractAddress string) (bool, []byte) {
+	account.Nonce++
+
+	accountNonceByte := make([]byte, 8)
+	binary.PutVarint(accountNonceByte, account.Nonce)
+	return true, crypto.Keccak256(account.Id, accountNonceByte, []byte(contractAddress))
+}
+
+func (account *ExternalAccount) StoreContract(contractHash []byte) (bool, []byte, int64, []byte) {
 	account.File = append(account.File, hex.EncodeToString(contractHash))
 	account.Nonce++
 
 	accountNonceByte := make([]byte, 8)
 	binary.PutVarint(accountNonceByte, account.Nonce)
-	return true, crypto.Keccak256(account.Id, accountNonceByte, contractHash), account.Nonce
+	return true, crypto.Keccak256(account.Id, accountNonceByte, contractHash), account.Nonce, crypto.Keccak256(account.Id, contractHash)
 }
 
 func (account *ExternalAccount) StoreKV(key []byte) (bool, []byte, int64) {

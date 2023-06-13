@@ -94,10 +94,20 @@ func (d *memorydb) Put(s, v []byte) bool {
 	return true
 }
 
-func (d *memorydb) StoreContract(hash, value []byte) bool {
+func (d *memorydb) StoreContract(hash, value []byte, abi string) bool {
 	key := hex.EncodeToString(hash)
 	d.filedb[key] = value
+	d.filedb[key+"abi"] = []byte(abi)
 	return true
+}
+
+func (d *memorydb) GetContract(hash, value []byte, abi string) (bool, []byte, []byte) {
+	key := hex.EncodeToString(hash)
+	if val, exists := d.filedb[key]; exists {
+		return true, val, d.filedb[key+"api"]
+	} else {
+		return false, nil, nil
+	}
 }
 
 func (d *memorydb) StoreFile(hash string, value []byte) bool {

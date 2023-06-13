@@ -92,6 +92,8 @@ func main() {
 	http.HandleFunc("/kv/retrieve", logMiddleware(h.KVRetrieveHandler))
 	http.HandleFunc("/block/info", logMiddleware(h.BlockInfoHandler))
 	http.HandleFunc("/transaction/info", logMiddleware(h.TransactionInfoHandler))
+	http.HandleFunc("/contract/deploy", logMiddleware(h.ContractDeployHandler))
+	http.HandleFunc("/contract/call", logMiddleware(h.ContractCallHandler))
 
 	//httpServer := http.Server{Addr: "127.0.0.1:8888", TLSConfig: &tlsCfg}
 	httpServer := http.Server{Addr: "0.0.0.0:8888"}

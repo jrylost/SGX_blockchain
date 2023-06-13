@@ -6,7 +6,7 @@ type Database interface {
 	TryLock(b []byte) bool
 	ReleaseLock(b []byte) bool
 	PurgeLock(int64)
-	StoreContract(hash, value []byte) bool
+	StoreContract(hash, value []byte, abi string) bool
 	StoreFile(hash string, value []byte) bool
 	RetrieveFile(hash string) []byte
 	StoreKV(hash string, value []byte) bool

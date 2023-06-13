@@ -1,8 +1,6 @@
 package vm
 
 import (
-	"SGX_blockchain/src/crypto"
-	"SGX_blockchain/src/utils"
 	"fmt"
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
@@ -32,50 +30,10 @@ type VirtualMachine struct {
 func NewVirtualMachine() *VirtualMachine {
 	code := make(map[string]string)
 	storage := make(map[string]StorageInterface)
-
 	return &VirtualMachine{
 		code:    code,
 		storage: storage,
 	}
-
-}
-
-func (v *VirtualMachine) Deploy(contractName, deployer string, src string, params map[string][]byte) string {
-	i := interp.New(interp.Options{})
-	si := StorageInterface{}
-	err := i.Use(interp.Exports{
-		"vmcontext/vmcontext": {
-			"StorageInterface": reflect.ValueOf(si),
-			"Sender":           reflect.ValueOf(deployer),
-		},
-		//"standardlib/standardlib": {
-		//	"keccak256": reflect.ValueOf(crypto.Keccak256),
-		//},
-	})
-
-	err = i.Use(stdlib.Symbols)
-	if err != nil {
-		panic("wrong!")
-	}
-
-	_, err = i.Eval(src)
-	fmt.Println(err)
-	funcv, err := i.Eval(contractName + ".Create")
-	fmt.Println(err)
-	fmt.Println(err, contractName+".Create")
-	createfunc := funcv.Interface().(func(map[string][]byte) bool)
-	res := createfunc(params)
-	if res != true {
-		panic("wrong")
-	}
-	hashBytes := crypto.Keccak256([]byte(src))
-	hashValue := utils.EncodeBytesToHexStringWith0x(hashBytes)
-	v.storage[hashValue] = si
-	v.code[hashValue] = src
-	return hashValue
-	//useWrap(wraptest)
-	//output := useWrap(wraptest)
-	//fmt.Println(hashValue, res, v)
 
 }
 

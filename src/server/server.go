@@ -195,47 +195,6 @@ type KVRetrieveResponse struct {
 	Ts int64 `json:"ts"`
 }
 
-type ContractDeployRequest struct {
-	Data struct {
-		From     string `json:"from"`
-		Code     string `json:"code"`
-		CodeHash string `json:"codeHash"`
-		Ts       int64  `json:"ts"`
-	} `json:"data"`
-	Signature string `json:"signature"`
-}
-
-type ContractDeployResponse struct {
-	Status      string `json:"status"`
-	Transaction struct {
-		From  string `json:"from"`
-		Hash  string `json:"hash"`
-		Nonce int64  `json:"nonce"`
-	} `json:"transaction"`
-	Ts int64 `json:"ts"`
-}
-
-type ContractCallRequest struct {
-	Data struct {
-		CodeHash     string `json:"codeHash"`
-		From         string `json:"from"`
-		FunctionName string `json:"functionName"`
-		Params       string `json:"params"`
-		Ts           int64  `json:"ts"`
-	} `json:"data"`
-	Signature string `json:"signature"`
-}
-
-type ContractCallResponse struct {
-	Status      string `json:"status"`
-	Transaction struct {
-		CodeHash string `json:"codeHash"`
-		From     string `json:"from"`
-		Hash     string `json:"hash"`
-	} `json:"transaction"`
-	Ts int64 `json:"ts"`
-}
-
 //type WrongResponseStruct struct {
 //	status string
 //	info string
@@ -716,66 +675,6 @@ func (m *MainHandler) KVRetrieveHandler(w http.ResponseWriter, r *http.Request) 
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
 			w.Write([]byte(errorString))
 		}
-	default:
-		w.WriteHeader(http.StatusNotFound)
-	}
-}
-
-func (m *MainHandler) ContractDeployHandler(w http.ResponseWriter, r *http.Request) {
-	body, _ := io.ReadAll(r.Body)
-	defer r.Body.Close()
-	switch r.Method {
-	case "POST":
-		address, valid, errString := CheckRequestWithAddress(body, 2, 2)
-		if !valid {
-			w.WriteHeader(http.StatusForbidden)
-			errorString, _ := sjson.Set(WrongResponse, "error", errString)
-			w.Write([]byte(errorString))
-		}
-
-		addressCompressed := crypto.ToCompressedPubKey(address)
-
-		var account = accounts.NewAccount()
-		if val, exists := m.d.Get(addressCompressed); !exists {
-			account.Id = addressCompressed
-		} else {
-			account.UnmarshalMsg(val)
-		}
-		code := gjson.GetBytes(body, "data.code").String()
-		codeByte := []byte(code)
-		codeHash := gjson.GetBytes(body, "data.codeHash").String()
-		if codeHash != hex.EncodeToString(crypto.Keccak256(codeByte)) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(WrongResponse))
-			//TODO! 补充状态
-		}
-
-		codeHashBytes, _ := hex.DecodeString(codeHash)
-		ok, txHash, nonce := account.StoreContract(codeHashBytes)
-		m.d.StoreContract(codeHashBytes, codeByte)
-		if !ok {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(WrongResponse))
-		}
-
-		resp := &ContractDeployResponse{
-			Status: "ok",
-			Transaction: struct {
-				From  string `json:"from"`
-				Hash  string `json:"hash"`
-				Nonce int64  `json:"nonce"`
-			}{
-				From:  utils.EncodeBytesToHexStringWith0x(address),
-				Hash:  utils.EncodeBytesToHexStringWith0x(txHash),
-				Nonce: nonce,
-			},
-			Ts: time.Now().UnixMilli(),
-		}
-
-		w.WriteHeader(http.StatusOK)
-		r, _ := json.Marshal(resp)
-		w.Write(r)
-
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
