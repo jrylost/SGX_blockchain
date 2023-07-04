@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"github.com/tidwall/gjson"
 	"io"

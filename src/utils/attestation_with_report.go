@@ -1,4 +1,4 @@
-//go:build !with_report
+//go:build with_report
 
 package utils
 
@@ -6,25 +6,13 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
+	"github.com/edgelesssys/ego/enclave"
 	"math/big"
 	"time"
 )
-
-func CreateTLSConfig() *tls.Config {
-	cert, priv := CreateCertificate()
-	tlsCfg := &tls.Config{
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{cert},
-				PrivateKey:  priv,
-			},
-		},
-	}
-	return tlsCfg
-}
 
 func CreateCertificate() ([]byte, crypto.PrivateKey) {
 	template := &x509.Certificate{
@@ -38,6 +26,10 @@ func CreateCertificate() ([]byte, crypto.PrivateKey) {
 	return cert, priv
 }
 
-func GetRemoteReport(hash []byte) ([]byte, error) {
-	return []byte(""), nil
+func GetRemoteReport(hash []byte) []byte {
+	report, err := enclave.GetRemoteReport(hash[:])
+	if err != nil {
+		fmt.Println(err)
+	}
+	return report
 }

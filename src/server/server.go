@@ -295,11 +295,7 @@ func (m *MainHandler) BlockInfoHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err.Error())
 	}
 
-	err = r.Body.Close()
-	if err != nil {
-		log.Println(err.Error())
-	}
-
+	defer r.Body.Close()
 	switch r.Method {
 	case "POST":
 		var valid = true
@@ -352,7 +348,7 @@ func (m *MainHandler) BlockInfoHandler(w http.ResponseWriter, r *http.Request) {
 				log.Println(errWrite.Error())
 			}
 		} else {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
 			_, errWrite := w.Write([]byte(errorString))
 			if errWrite != nil {
@@ -366,13 +362,7 @@ func (m *MainHandler) BlockInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 func (m *MainHandler) TransactionInfoHandler(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(err.Error()))
-		}
-	}(r.Body)
+	defer r.Body.Close()
 	switch r.Method {
 	case "POST":
 		var valid = true
@@ -396,17 +386,17 @@ func (m *MainHandler) TransactionInfoHandler(w http.ResponseWriter, r *http.Requ
 			//account, _ := m.GetAccount(addressCompressed)
 			txhash := gjson.GetBytes(body, "data.hash").String()
 			txs := m.d.GetTx(txhash)
-			resp, _ := sjson.Set(txs, "ts", time.Now().UnixMilli())
+			resp, _ := sjson.SetBytes([]byte(txs), "ts", time.Now().UnixMilli())
 
 			w.WriteHeader(http.StatusOK)
-			r, err := json.Marshal(resp)
-			if err != nil {
-				return
-			}
+			//result, err := json.Marshal(resp)
+			//if err != nil {
+			//	return
+			//}
 
-			w.Write(r)
+			w.Write(resp)
 		} else {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
 			w.Write([]byte(errorString))
 		}
@@ -419,13 +409,7 @@ func (m *MainHandler) AccountInfoHandler(w http.ResponseWriter, r *http.Request)
 	var jsonlib = jsoniter.ConfigCompatibleWithStandardLibrary
 
 	body, _ := io.ReadAll(r.Body)
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte(err.Error()))
-		}
-	}(r.Body)
+	defer r.Body.Close()
 	switch r.Method {
 	case "POST":
 		address, valid, errString := CheckRequestWithAddress(body, 2, 2)
@@ -454,7 +438,7 @@ func (m *MainHandler) AccountInfoHandler(w http.ResponseWriter, r *http.Request)
 
 			w.Write(r)
 		} else {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
 			w.Write([]byte(errorString))
 		}
@@ -475,7 +459,7 @@ func (m *MainHandler) FileStoreHandler(w http.ResponseWriter, r *http.Request) {
 
 			fileHashRaw := gjson.GetBytes(body, "data.fileHash")
 			if !fileHashRaw.Exists() {
-				w.WriteHeader(http.StatusForbidden)
+				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"status":"wrong","error":"fileHash missing"}`))
 				return
 			}
@@ -520,7 +504,7 @@ func (m *MainHandler) FileStoreHandler(w http.ResponseWriter, r *http.Request) {
 			mu.Unlock()
 			w.Write(r)
 		} else {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
 			w.Write([]byte(errorString))
 		}
@@ -563,7 +547,7 @@ func (m *MainHandler) FileRetrieveHandler(w http.ResponseWriter, r *http.Request
 			r, _ := json.Marshal(resp)
 			w.Write(r)
 		} else {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
 			w.Write([]byte(errorString))
 		}
@@ -626,7 +610,7 @@ func (m *MainHandler) KVStoreHandler(w http.ResponseWriter, r *http.Request) {
 			//accountjsonrefreshed, _ := json.Marshal(account)
 			w.Write(r)
 		} else {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
 			w.Write([]byte(errorString))
 		}
@@ -671,7 +655,7 @@ func (m *MainHandler) KVRetrieveHandler(w http.ResponseWriter, r *http.Request) 
 			r, _ := json.Marshal(resp)
 			w.Write(r)
 		} else {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
 			w.Write([]byte(errorString))
 		}

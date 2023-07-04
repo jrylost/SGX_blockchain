@@ -67,7 +67,7 @@ func (m *MainHandler) ContractDeployHandler(w http.ResponseWriter, r *http.Reque
 	case "POST":
 		address, valid, errString := CheckRequestWithAddress(body, 2, 6)
 		if !valid {
-			w.WriteHeader(http.StatusForbidden)
+			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", errString)
 			w.Write([]byte(errorString))
 			return
@@ -90,6 +90,13 @@ func (m *MainHandler) ContractDeployHandler(w http.ResponseWriter, r *http.Reque
 			w.Write([]byte(errorString))
 		}
 		contractABI := gjson.GetBytes(body, "data.abi").String()
+		_, err := ABIParser(contractABI)
+		if err != nil {
+			w.WriteHeader(http.StatusOK)
+			errString, _ = sjson.Set(WrongResponse, "error", err.Error())
+			w.Write([]byte(errString))
+			return
+		}
 		codeHashBytes := utils.DecodeHexStringToBytesWith0x(codeHash)
 		ok, txHash, nonce, contractAddress := account.StoreContract(codeHashBytes)
 		m.d.StoreContract(contractAddress, codeByte, contractABI)

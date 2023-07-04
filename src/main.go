@@ -1,12 +1,11 @@
 package main
 
 import (
+	"SGX_blockchain/src/config"
 	"SGX_blockchain/src/db"
 	"SGX_blockchain/src/server"
 	"fmt"
-	"log"
 	"net/http"
-	"net/http/httputil"
 )
 
 //var (
@@ -15,29 +14,6 @@ import (
 //	testpubkey, _  = hex.DecodeString("04e32df42865e97135acfb65f3bae71bdc86f4d49150ad6a440b6f15878109880a0a2b2667f7e725ceea70c673093bf67663e0312623c8e091b13cf2c0f11ef652")
 //	testpubkeyc, _ = hex.DecodeString("02e32df42865e97135acfb65f3bae71bdc86f4d49150ad6a440b6f15878109880a")
 //)
-
-func logMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// 打印请求的方法，URL，头部和主体
-		fmt.Println("Request:")
-		dump, err := httputil.DumpRequest(r, true)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(string(dump))
-
-		// 调用处理函数
-		next(w, r)
-
-		// 打印响应的状态码，头部和主体
-		//fmt.Println("Response:")
-		//dump, err = httputil.DumpResponse(*w.(http.Response), true)
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
-		//fmt.Println(string(dump))
-	}
-}
 
 func main() {
 
@@ -85,15 +61,15 @@ func main() {
 
 	//testserver := httptest.NewServer(http.HandlerFunc(h.AccountInfoHandler))
 
-	http.HandleFunc("/account/info", logMiddleware(h.AccountInfoHandler))
-	http.HandleFunc("/files/store", logMiddleware(h.FileStoreHandler))
-	http.HandleFunc("/files/retrieve", logMiddleware(h.FileRetrieveHandler))
-	http.HandleFunc("/kv/store", logMiddleware(h.KVStoreHandler))
-	http.HandleFunc("/kv/retrieve", logMiddleware(h.KVRetrieveHandler))
-	http.HandleFunc("/block/info", logMiddleware(h.BlockInfoHandler))
-	http.HandleFunc("/transaction/info", logMiddleware(h.TransactionInfoHandler))
-	http.HandleFunc("/contract/deploy", logMiddleware(h.ContractDeployHandler))
-	http.HandleFunc("/contract/call", logMiddleware(h.ContractCallHandler))
+	http.HandleFunc("/account/info", config.LogMiddleware(h.AccountInfoHandler))
+	http.HandleFunc("/files/store", config.LogMiddleware(h.FileStoreHandler))
+	http.HandleFunc("/files/retrieve", config.LogMiddleware(h.FileRetrieveHandler))
+	http.HandleFunc("/kv/store", config.LogMiddleware(h.KVStoreHandler))
+	http.HandleFunc("/kv/retrieve", config.LogMiddleware(h.KVRetrieveHandler))
+	http.HandleFunc("/block/info", config.LogMiddleware(h.BlockInfoHandler))
+	http.HandleFunc("/transaction/info", config.LogMiddleware(h.TransactionInfoHandler))
+	http.HandleFunc("/contract/deploy", config.LogMiddleware(h.ContractDeployHandler))
+	http.HandleFunc("/contract/call", config.LogMiddleware(h.ContractCallHandler))
 
 	//httpServer := http.Server{Addr: "127.0.0.1:8888", TLSConfig: &tlsCfg}
 	httpServer := http.Server{Addr: "0.0.0.0:8888"}

@@ -1,6 +1,7 @@
 package db
 
 type Database interface {
+	//Get returns the value for given key if it exists
 	Get(s []byte) ([]byte, bool)
 	Put(s, v []byte) bool
 	TryLock(b []byte) bool

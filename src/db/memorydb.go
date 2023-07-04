@@ -1,7 +1,6 @@
 package db
 
 import (
-	"SGX_blockchain/src/vm"
 	"container/list"
 	"encoding/hex"
 	"encoding/json"
@@ -15,11 +14,10 @@ type memorydb struct {
 	lock map[string]*list.Element
 	lru  *list.List
 	//Database
-	filedb    map[string][]byte
-	kvdb      map[string][]byte
-	contextdb map[string]vm.StorageInterface
-	blockdb   map[int64][]string
-	txdb      map[string]string
+	filedb  map[string][]byte
+	kvdb    map[string][]byte
+	blockdb map[int64][]string
+	txdb    map[string]string
 }
 
 func InitMemorydb() *memorydb {
@@ -29,7 +27,6 @@ func InitMemorydb() *memorydb {
 	d.lru = list.New()
 	d.filedb = make(map[string][]byte)
 	d.kvdb = make(map[string][]byte)
-	d.contextdb = make(map[string]vm.StorageInterface)
 	d.blockdb = make(map[int64][]string)
 	d.txdb = make(map[string]string)
 	return d
