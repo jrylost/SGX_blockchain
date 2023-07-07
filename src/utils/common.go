@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 )
@@ -30,4 +31,8 @@ func EncodeBytesToHexStringWith0x(b []byte) string {
 func DecodeHexStringToBytesWith0x(s string) []byte {
 	val, _ := hex.DecodeString(s[2:])
 	return val
+}
+
+func JoinBytes(b ...[]byte) []byte {
+	return bytes.Join(b, []byte(""))
 }

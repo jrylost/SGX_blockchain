@@ -1,8 +1,8 @@
-package server
+package ContractContext
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 )
 
@@ -57,6 +57,9 @@ type ContractABI struct {
 //var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func ABIParser(ABIJsonString string) (*ContractABI, error) {
+	if len(ABIJsonString) == 0 {
+		return nil, errors.New("no abi")
+	}
 	abi := &ContractABI{}
 	err := json.Unmarshal([]byte(ABIJsonString), &abi)
 	if err != nil {
@@ -70,8 +73,7 @@ func ContractInputHandler(inputJsonString string) ([]FunctionInputWithValue, err
 	var inputs []FunctionInputWithValue
 	err := json.Unmarshal([]byte(inputJsonString), &inputs)
 	if err != nil {
-		fmt.Println(err)
-		panic("input value error")
+		return nil, errors.New("incorrect contract input")
 	}
 	return inputs, err
 }

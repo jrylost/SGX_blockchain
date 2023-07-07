@@ -1,13 +1,17 @@
 package ContractContext
 
-import "time"
+import (
+	"SGX_blockchain/src/utils"
+	"crypto/rand"
+	"time"
+)
 
 type Context struct {
 	stub Stub
 }
 
 type Stub struct {
-	strdb          map[string]string
+	Strdb          map[string]string
 	clientIdentity *ClientIdentity
 }
 
@@ -15,8 +19,11 @@ type ClientIdentity struct {
 	MSPID string
 }
 
-func Initial() *Context {
-	return &Context{}
+func Initial(strdb map[string]string) *Context {
+	return &Context{stub: Stub{
+		Strdb:          strdb,
+		clientIdentity: &ClientIdentity{MSPID: "MSPID"},
+	}}
 }
 
 func (s *Stub) ClientIdentity() *ClientIdentity {
@@ -35,16 +42,19 @@ func (i *ClientIdentity) GetMSPID() string {
 //}
 
 func (s *Stub) PutStringState(key, value string) {
-	s.strdb[key] = value
+	s.Strdb[key] = value
+	//fmt.Println("??????")
 }
 
 func (s *Stub) GetStringState(key string) (string, error) {
-
-	return s.strdb[key], nil
+	return s.Strdb[key], nil
 }
 
 func (s *Stub) GetTxId() string {
-	return "0xaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	b := make([]byte, 32)
+	rand.Read(b)
+	res := utils.EncodeBytesToHexStringWith0x(b)
+	return res
 }
 
 func (s *Stub) GetQueryResult(query string) []string {
@@ -56,6 +66,5 @@ func (s *Stub) GetTxTimestamp() string {
 }
 
 func (c *Context) Getstub() *Stub {
-	db := make(map[string]string)
-	return &Stub{strdb: db, clientIdentity: &ClientIdentity{MSPID: "0x111"}}
+	return &c.stub
 }

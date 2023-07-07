@@ -575,7 +575,7 @@ func (m *MainHandler) KVStoreHandler(w http.ResponseWriter, r *http.Request) {
 			Value := gjson.GetBytes(body, "data.value")
 			valueBytes := []byte(Value.String())
 
-			m.d.StoreKV(utils.EncodeBytesToHexStringWith0x(bytes.Join([][]byte{addressCompressed, keyHashBytes}, []byte(""))), valueBytes)
+			m.d.StoreKV(utils.EncodeBytesToHexStringWith0x(utils.JoinBytes(addressCompressed, keyHashBytes)), valueBytes)
 			ctime := time.Now().UnixMilli()
 			txHashWith0x := utils.EncodeBytesToHexStringWith0x(txHash)
 

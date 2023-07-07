@@ -4,6 +4,8 @@ import (
 	"SGX_blockchain/src/accounts"
 	"SGX_blockchain/src/crypto"
 	"SGX_blockchain/src/utils"
+	"SGX_blockchain/src/vm"
+	"SGX_blockchain/src/vm/ContractContext"
 	"encoding/hex"
 	"fmt"
 	"github.com/tidwall/gjson"
@@ -86,11 +88,12 @@ func (m *MainHandler) ContractDeployHandler(w http.ResponseWriter, r *http.Reque
 		codeHash := gjson.GetBytes(body, "data.codeHash").String()
 		if codeHash[2:] != hex.EncodeToString(crypto.Keccak256(codeByte)) {
 			w.WriteHeader(http.StatusOK)
-			errorString, _ := sjson.Set(WrongResponse, "error", `code and codeHash mismatch`)
+			errorString, _ := sjson.Set(WrongResponse, "error", `incorrect codeHash`)
 			w.Write([]byte(errorString))
+			return
 		}
 		contractABI := gjson.GetBytes(body, "data.abi").String()
-		_, err := ABIParser(contractABI)
+		abiParsed, err := ContractContext.ABIParser(contractABI)
 		if err != nil {
 			w.WriteHeader(http.StatusOK)
 			errString, _ = sjson.Set(WrongResponse, "error", err.Error())
@@ -99,11 +102,12 @@ func (m *MainHandler) ContractDeployHandler(w http.ResponseWriter, r *http.Reque
 		}
 		codeHashBytes := utils.DecodeHexStringToBytesWith0x(codeHash)
 		ok, txHash, nonce, contractAddress := account.StoreContract(codeHashBytes)
-		m.d.StoreContract(contractAddress, codeByte, contractABI)
 		if !ok {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(WrongResponse))
+			return
 		}
+		m.d.StoreContract(utils.JoinBytes(addressCompressed, codeHashBytes), codeByte, abiParsed)
 		ctime := time.Now().UnixMilli()
 		txHashWith0x := utils.EncodeBytesToHexStringWith0x(txHash)
 
@@ -129,6 +133,7 @@ func (m *MainHandler) ContractDeployHandler(w http.ResponseWriter, r *http.Reque
 
 		m.d.StoreTxToBlock(ctime, txHashWith0x)
 		m.d.StoreTx(txHashWith0x, "Contract depoly", ctime)
+		m.d.CreateContext(utils.JoinBytes(addressCompressed, codeHashBytes))
 		accountjsonrefreshed, err := account.MarshalMsg(nil)
 		if err != nil {
 			fmt.Println(err.Error())
@@ -145,6 +150,15 @@ func (m *MainHandler) ContractDeployHandler(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *MainHandler) ContractCallHandler(w http.ResponseWriter, r *http.Request) {
+	//defer func() {
+	//	// recover from panic if one occured. Set err to nil otherwise.
+	//	if err := recover(); err != nil {
+	//		w.WriteHeader(http.StatusOK)
+	//		errorString, _ := sjson.Set(WrongResponse, "error", err)
+	//		w.Write([]byte(errorString))
+	//		return
+	//	}
+	//}()
 	body, _ := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	switch r.Method {
@@ -173,7 +187,75 @@ func (m *MainHandler) ContractCallHandler(w http.ResponseWriter, r *http.Request
 			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", `contractAddress and codeHash mismatch`)
 			w.Write([]byte(errorString))
+			return
 		}
+
+		contractContent, ok := m.d.GetContract(utils.JoinBytes(addressCompressed, codeHashByte))
+		if !ok {
+			w.WriteHeader(http.StatusOK)
+			errorString, _ := sjson.Set(WrongResponse, "error", "not deployed")
+			w.Write([]byte(errorString))
+			return
+		}
+		ctx, abi, ok := m.d.GetContext(utils.JoinBytes(addressCompressed, codeHashByte))
+		if !ok {
+			w.WriteHeader(http.StatusOK)
+			errorString, _ := sjson.Set(WrongResponse, "error", "not deployed")
+			w.Write([]byte(errorString))
+			return
+		}
+
+		functionName := gjson.GetBytes(body, "data.functionName").String()
+
+		functionInputs := gjson.GetBytes(body, "data.functionInputs").String()
+		values, err := ContractContext.ContractInputHandler(functionInputs)
+		if err != nil {
+			w.WriteHeader(http.StatusOK)
+			errorString, _ := sjson.Set(WrongResponse, "error", err.Error())
+			w.Write([]byte(errorString))
+			return
+		}
+
+		var abiFunction ContractContext.ContractFunction
+		var flag = false
+		for _, function := range abi.ContractFunctions {
+			if function.FunctionName == functionName {
+				abiFunction = function
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			w.WriteHeader(http.StatusOK)
+			errorString, _ := sjson.Set(WrongResponse, "error", "incorrect functionName")
+			w.Write([]byte(errorString))
+			return
+		}
+		inputs, err := ContractContext.ContractInputVerify(values, abiFunction.FunctionInputs)
+		if err != nil {
+			w.WriteHeader(http.StatusOK)
+			errorString, _ := sjson.Set(WrongResponse, "error", err.Error())
+			w.Write([]byte(errorString))
+			return
+		}
+
+		virtualMachine := vm.NewVirtualMachine(contractContent)
+		results, newctx, err := virtualMachine.Call(string(addressCompressed), abi.ContractName, functionName, contractContent, inputs, ctx)
+		if err != nil {
+			w.WriteHeader(http.StatusOK)
+			errorString, _ := sjson.Set(WrongResponse, "error", err.Error())
+			w.Write([]byte(errorString))
+			return
+		}
+		jsonResults, err := json.Marshal(results)
+
+		if err != nil {
+			w.WriteHeader(http.StatusOK)
+			errorString, _ := sjson.Set(WrongResponse, "error", err.Error())
+			w.Write([]byte(errorString))
+			return
+		}
+		m.d.StoreContext(utils.JoinBytes(addressCompressed, codeHashByte), newctx)
 		//m.d.StoreContract(contractAddress, codeByte, contractABI)
 		//if !ok {
 		//	w.WriteHeader(http.StatusOK)
@@ -184,7 +266,7 @@ func (m *MainHandler) ContractCallHandler(w http.ResponseWriter, r *http.Request
 		txHashWith0x := utils.EncodeBytesToHexStringWith0x(txHash)
 
 		resp := &ContractCallResponse{
-			Status: "",
+			Status: "ok",
 			Transaction: struct {
 				Hash            string `json:"hash"`
 				Result          string `json:"result"`
@@ -193,7 +275,7 @@ func (m *MainHandler) ContractCallHandler(w http.ResponseWriter, r *http.Request
 				Nonce           int64  `json:"nonce"`
 			}{
 				Hash:            txHashWith0x,
-				Result:          "",
+				Result:          string(jsonResults),
 				From:            utils.EncodeBytesToHexStringWith0x(address),
 				ContractAddress: contractAddress,
 				Nonce:           account.Nonce,

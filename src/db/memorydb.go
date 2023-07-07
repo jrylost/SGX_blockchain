@@ -1,6 +1,7 @@
 package db
 
 import (
+	"SGX_blockchain/src/vm/ContractContext"
 	"container/list"
 	"encoding/hex"
 	"encoding/json"
@@ -14,10 +15,12 @@ type memorydb struct {
 	lock map[string]*list.Element
 	lru  *list.List
 	//Database
-	filedb  map[string][]byte
-	kvdb    map[string][]byte
-	blockdb map[int64][]string
-	txdb    map[string]string
+	filedb    map[string][]byte
+	kvdb      map[string][]byte
+	blockdb   map[int64][]string
+	txdb      map[string]string
+	abidb     map[string]*ContractContext.ContractABI
+	contextdb map[string]map[string]string
 }
 
 func InitMemorydb() *memorydb {
@@ -29,6 +32,8 @@ func InitMemorydb() *memorydb {
 	d.kvdb = make(map[string][]byte)
 	d.blockdb = make(map[int64][]string)
 	d.txdb = make(map[string]string)
+	d.abidb = make(map[string]*ContractContext.ContractABI)
+	d.contextdb = make(map[string]map[string]string)
 	return d
 }
 
@@ -91,19 +96,19 @@ func (d *memorydb) Put(s, v []byte) bool {
 	return true
 }
 
-func (d *memorydb) StoreContract(hash, value []byte, abi string) bool {
+func (d *memorydb) StoreContract(hash, value []byte, abi *ContractContext.ContractABI) bool {
 	key := hex.EncodeToString(hash)
 	d.filedb[key] = value
-	d.filedb[key+"abi"] = []byte(abi)
+	d.abidb[key] = abi
 	return true
 }
 
-func (d *memorydb) GetContract(hash, value []byte, abi string) (bool, []byte, []byte) {
+func (d *memorydb) GetContract(hash []byte) (string, bool) {
 	key := hex.EncodeToString(hash)
 	if val, exists := d.filedb[key]; exists {
-		return true, val, d.filedb[key+"api"]
+		return string(val), true
 	} else {
-		return false, nil, nil
+		return "", false
 	}
 }
 
@@ -196,4 +201,24 @@ func (d *memorydb) GetTx(hash string) string {
 		resstr, _ := json.Marshal(resstruct)
 		return string(resstr)
 	}
+}
+
+func (d *memorydb) GetContext(hash []byte) (map[string]string, *ContractContext.ContractABI, bool) {
+	key := hex.EncodeToString(hash)
+	if val, ok := d.contextdb[key]; ok {
+		if abival, ok2 := d.abidb[key]; ok2 {
+			return val, abival, true
+		}
+	}
+	return nil, nil, false
+}
+
+func (d *memorydb) CreateContext(hash []byte) {
+	key := hex.EncodeToString(hash)
+	d.contextdb[key] = make(map[string]string)
+}
+
+func (d *memorydb) StoreContext(hash []byte, ctx map[string]string) {
+	key := hex.EncodeToString(hash)
+	d.contextdb[key] = ctx
 }
