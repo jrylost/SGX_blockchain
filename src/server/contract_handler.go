@@ -28,14 +28,14 @@ type ContractDeployRequest struct {
 }
 
 type ContractDeployResponse struct {
-	Status      string `json:"status"`
-	Transaction struct {
+	Status string `json:"status"`
+	Data   struct {
 		From            string `json:"from"`
 		Hash            string `json:"hash"`
 		ContractAddress string `json:"contractAddress"`
 		Nonce           int64  `json:"nonce"`
 		CodeHash        string `json:"codeHash"`
-	} `json:"transaction"`
+	} `json:"data"`
 	Ts int64 `json:"ts"`
 }
 
@@ -51,14 +51,14 @@ type ContractCallRequest struct {
 }
 
 type ContractCallResponse struct {
-	Status      string `json:"status"`
-	Transaction struct {
+	Status string `json:"status"`
+	Data   struct {
 		Hash            string `json:"hash"`
 		Result          string `json:"result"`
 		From            string `json:"from"`
 		ContractAddress string `json:"contractAddress"`
 		Nonce           int64  `json:"nonce"`
-	} `json:"transaction"`
+	} `json:"data"`
 	Ts int64 `json:"ts"`
 }
 
@@ -113,7 +113,7 @@ func (m *MainHandler) ContractDeployHandler(w http.ResponseWriter, r *http.Reque
 
 		resp := &ContractDeployResponse{
 			Status: "ok",
-			Transaction: struct {
+			Data: struct {
 				From            string `json:"from"`
 				Hash            string `json:"hash"`
 				ContractAddress string `json:"contractAddress"`
@@ -267,7 +267,7 @@ func (m *MainHandler) ContractCallHandler(w http.ResponseWriter, r *http.Request
 
 		resp := &ContractCallResponse{
 			Status: "ok",
-			Transaction: struct {
+			Data: struct {
 				Hash            string `json:"hash"`
 				Result          string `json:"result"`
 				From            string `json:"from"`

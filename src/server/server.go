@@ -102,14 +102,14 @@ type TransferRequest struct {
 }
 
 type TransferResponse struct {
-	Status      string `json:"status"`
-	Transaction struct {
+	Status string `json:"status"`
+	Data   struct {
 		Hash  string `json:"hash"`
 		From  string `json:"from"`
 		To    string `json:"to"`
 		Nonce int64  `json:"nonce"`
 		Value int64  `json:"value"`
-	} `json:"transaction"`
+	} `json:"data"`
 	Ts int64 `json:"ts"`
 }
 
@@ -125,13 +125,13 @@ type FileStoreRequest struct {
 }
 
 type FileStoreResponse struct {
-	Status      string `json:"status"`
-	Transaction struct {
+	Status string `json:"status"`
+	Data   struct {
 		Hash     string `json:"hash"`
 		FileHash string `json:"fileHash"`
 		From     string `json:"from"`
 		Nonce    int64  `json:"nonce"`
-	} `json:"transaction"`
+	} `json:"data"`
 	Ts int64 `json:"ts"`
 }
 
@@ -145,12 +145,12 @@ type FileRetrieveRequest struct {
 }
 
 type FileRetrieveResponse struct {
-	Status      string `json:"status"`
-	Transaction struct {
+	Status string `json:"status"`
+	Data   struct {
 		FileHash string `json:"fileHash"`
 		From     string `json:"from"`
 		Content  string `json:"content"`
-	} `json:"transaction"`
+	} `json:"data"`
 	Ts int64 `json:"ts"`
 }
 
@@ -166,13 +166,13 @@ type KVStoreRequest struct {
 }
 
 type KVStoreResponse struct {
-	Status      string `json:"status"`
-	Transaction struct {
+	Status string `json:"status"`
+	Data   struct {
 		Hash  string `json:"hash"`
 		From  string `json:"from"`
 		Key   string `json:"key"`
 		Nonce int64  `json:"nonce"`
-	} `json:"transaction"`
+	} `json:"data"`
 	Ts int64 `json:"ts"`
 }
 
@@ -186,12 +186,12 @@ type KVRetrieveRequest struct {
 }
 
 type KVRetrieveResponse struct {
-	Status      string `json:"status"`
-	Transaction struct {
+	Status string `json:"status"`
+	Data   struct {
 		From  string `json:"from"`
 		Key   string `json:"key"`
 		Value string `json:"value"`
-	} `json:"transaction"`
+	} `json:"data"`
 	Ts int64 `json:"ts"`
 }
 
@@ -477,7 +477,7 @@ func (m *MainHandler) FileStoreHandler(w http.ResponseWriter, r *http.Request) {
 
 			resp := &FileStoreResponse{
 				Status: "ok",
-				Transaction: struct {
+				Data: struct {
 					Hash     string `json:"hash"`
 					FileHash string `json:"fileHash"`
 					From     string `json:"from"`
@@ -531,7 +531,7 @@ func (m *MainHandler) FileRetrieveHandler(w http.ResponseWriter, r *http.Request
 
 			resp := &FileRetrieveResponse{
 				Status: "ok",
-				Transaction: struct {
+				Data: struct {
 					FileHash string `json:"fileHash"`
 					From     string `json:"from"`
 					Content  string `json:"content"`
@@ -581,7 +581,7 @@ func (m *MainHandler) KVStoreHandler(w http.ResponseWriter, r *http.Request) {
 
 			resp := &KVStoreResponse{
 				Status: "ok",
-				Transaction: struct {
+				Data: struct {
 					Hash  string `json:"hash"`
 					From  string `json:"from"`
 					Key   string `json:"key"`
@@ -639,7 +639,7 @@ func (m *MainHandler) KVRetrieveHandler(w http.ResponseWriter, r *http.Request) 
 
 			resp := &KVRetrieveResponse{
 				Status: "ok",
-				Transaction: struct {
+				Data: struct {
 					From  string `json:"from"`
 					Key   string `json:"key"`
 					Value string `json:"value"`
