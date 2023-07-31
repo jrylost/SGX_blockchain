@@ -22,8 +22,9 @@ func TestEcrecover(t *testing.T) {
 	if err != nil {
 		t.Fatalf("recover error: %s", err)
 	}
-	uncompressedPubK := hex.EncodeToString(pubKey.SerializeCompressed())
-	fmt.Println(uncompressedPubK)
+	hex.EncodeToString(pubKey.SerializeCompressed())
+	//uncompressedPubK := hex.EncodeToString(pubKey.SerializeCompressed())
+	//fmt.Println(uncompressedPubK)
 }
 
 // 测试压缩公钥和非压缩公钥的签名验证
@@ -47,13 +48,13 @@ func TestSign(t *testing.T) {
 		t.Fatalf("generate key wrong!")
 	}
 
-	fmt.Println(EncodeBytesToHexStringWith0x(k.PrivateKey.Serialize()))
-	fmt.Println(EncodeBytesToHexStringWith0x(k.PublicKey.SerializeCompressed()))
-	fmt.Println(EncodeBytesToHexStringWith0x(k.PublicKey.SerializeUncompressed()))
+	//fmt.Println(EncodeBytesToHexStringWith0x(k.PrivateKey.Serialize()))
+	//fmt.Println(EncodeBytesToHexStringWith0x(k.PublicKey.SerializeCompressed()))
+	//fmt.Println(EncodeBytesToHexStringWith0x(k.PublicKey.SerializeUncompressed()))
 	msg := [][]byte{[]byte("abc"), []byte("bcd")}
 	//msg := "ce0677bb30baa8cf067c88db9811f4333d131bf8bcf12fe7065d211dce971008"
 	sig := k.SignMessage(msg...)
-	fmt.Println(hex.EncodeToString(sig))
+	//fmt.Println(hex.EncodeToString(sig))
 	b := VerifyMessageSignature(EthereumSignatureToDER(sig), k.PubK, msg...)
 	if !b {
 		t.Fatalf("wrong signature!")
@@ -66,24 +67,24 @@ func TestSign2(t *testing.T) {
 	//	t.Fatalf("generate key wrong!")
 	//}
 
-	fmt.Println(hex.EncodeToString(k.PriK))
-	fmt.Println(hex.EncodeToString(k.PublicKey.SerializeUncompressed()))
-	fmt.Println(hex.EncodeToString(k.PublicKey.SerializeCompressed()))
-	fmt.Println(hex.EncodeToString(Keccak256(k.PublicKey.SerializeUncompressed()[1:])))
-	fmt.Println(len(k.PublicKey.SerializeUncompressed()[1:]))
-	fmt.Println(hex.EncodeToString(k.Address))
+	//fmt.Println(hex.EncodeToString(k.PriK))
+	//fmt.Println(hex.EncodeToString(k.PublicKey.SerializeUncompressed()))
+	//fmt.Println(hex.EncodeToString(k.PublicKey.SerializeCompressed()))
+	//fmt.Println(hex.EncodeToString(Keccak256(k.PublicKey.SerializeUncompressed()[1:])))
+	//fmt.Println(len(k.PublicKey.SerializeUncompressed()[1:]))
+	//fmt.Println(hex.EncodeToString(k.Address))
 	//for i := 0; i < 100; i++ {
 	//
 	//fmt.Println(hex.EncodeToString(Keccak256(k.PublicKey.SerializeUncompressed()[i:])))
 	//}
 
-	fmt.Println("私钥：", EncodeBytesToHexStringWith0x(k.PrivateKey.Serialize()))
-	fmt.Println("压缩公钥：", EncodeBytesToHexStringWith0x(k.PublicKey.SerializeCompressed()))
-	fmt.Println("公钥：", EncodeBytesToHexStringWith0x(k.PublicKey.SerializeUncompressed()))
+	//fmt.Println("私钥：", EncodeBytesToHexStringWith0x(k.PrivateKey.Serialize()))
+	//fmt.Println("压缩公钥：", EncodeBytesToHexStringWith0x(k.PublicKey.SerializeCompressed()))
+	//fmt.Println("公钥：", EncodeBytesToHexStringWith0x(k.PublicKey.SerializeUncompressed()))
 	msg := [][]byte{[]byte("abcbcd")}
 	//msg := "ce0677bb30baa8cf067c88db9811f4333d131bf8bcf12fe7065d211dce971008"
 	sig := k.SignMessage(msg...)
-	fmt.Println("签名：", EncodeBytesToHexStringWith0x(sig))
+	//fmt.Println("签名：", EncodeBytesToHexStringWith0x(sig))
 	b := VerifyMessageSignature(EthereumSignatureToDER(sig), k.PubK, msg...)
 	if !b {
 		t.Fatalf("wrong signature!")
@@ -96,9 +97,9 @@ func TestSign3(t *testing.T) {
 		t.Fatalf("generate key wrong!")
 	}
 
-	fmt.Println(EncodeBytesToHexStringWith0x(k.PrivateKey.Serialize()))
-	fmt.Println(EncodeBytesToHexStringWith0x(k.PublicKey.SerializeCompressed()))
-	fmt.Println(EncodeBytesToHexStringWith0x(k.PublicKey.SerializeUncompressed()))
+	//fmt.Println(EncodeBytesToHexStringWith0x(k.PrivateKey.Serialize()))
+	//fmt.Println(EncodeBytesToHexStringWith0x(k.PublicKey.SerializeCompressed()))
+	//fmt.Println(EncodeBytesToHexStringWith0x(k.PublicKey.SerializeUncompressed()))
 	msg := [][]byte{[]byte("abc"), []byte("bcd")}
 	//msg := "ce0677bb30baa8cf067c88db9811f4333d131bf8bcf12fe7065d211dce971008"
 	sig := k.SignMessage(msg...)
@@ -117,4 +118,16 @@ func BenchmarkVerifyHashSignature(b *testing.B) {
 			b.Fatalf("Wrong")
 		}
 	}
+}
+
+func BenchmarkVerifyHashSignature2(b *testing.B) {
+	sig := EthereumSignatureToDER(testsig)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			bool1 := VerifyHashSignature(sig, testmsg, testpubkeyc)
+			if !bool1 {
+				b.Fatalf("Wrong")
+			}
+		}
+	})
 }

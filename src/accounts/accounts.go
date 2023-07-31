@@ -74,7 +74,6 @@ func (account *ExternalAccount) StoreFile(fileHash []byte) (bool, []byte, int64)
 
 func (account *ExternalAccount) CallContract(contractAddress string) (bool, []byte) {
 	account.Nonce++
-
 	accountNonceByte := make([]byte, 8)
 	binary.PutVarint(accountNonceByte, account.Nonce)
 	return true, crypto.Keccak256(account.Id, accountNonceByte, []byte(contractAddress))

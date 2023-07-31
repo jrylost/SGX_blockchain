@@ -1,8 +1,7 @@
 package ContractContext
 
 import (
-	"SGX_blockchain/src/utils"
-	"crypto/rand"
+	"errors"
 	"time"
 )
 
@@ -13,16 +12,22 @@ type Context struct {
 type Stub struct {
 	Strdb          map[string]string
 	clientIdentity *ClientIdentity
+	txHashWith0x   string
 }
 
 type ClientIdentity struct {
 	MSPID string
 }
 
-func Initial(strdb map[string]string) *Context {
+type QueryContent struct {
+	Selector string `json:"selector"`
+}
+
+func Initial(strdb map[string]string, txHashWith0x string) *Context {
 	return &Context{stub: Stub{
 		Strdb:          strdb,
 		clientIdentity: &ClientIdentity{MSPID: "MSPID"},
+		txHashWith0x:   txHashWith0x,
 	}}
 }
 
@@ -34,30 +39,34 @@ func (i *ClientIdentity) GetMSPID() string {
 	return i.MSPID
 }
 
-//type Stub interface {
-//    GetStringState(key string) string
-//    PutStringState(key, value string)
-//    GetTxId() string
-//    GetTxTimestamp() string
-//}
-
 func (s *Stub) PutStringState(key, value string) {
 	s.Strdb[key] = value
-	//fmt.Println("??????")
 }
 
 func (s *Stub) GetStringState(key string) (string, error) {
-	return s.Strdb[key], nil
+	val, ok := s.Strdb[key]
+	if !ok {
+		return "", errors.New("invalid key")
+	}
+	return val, nil
 }
 
 func (s *Stub) GetTxId() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	res := utils.EncodeBytesToHexStringWith0x(b)
-	return res
+	return s.txHashWith0x
 }
 
 func (s *Stub) GetQueryResult(query string) []string {
+	//var queryContent QueryContent
+	//err := json.Unmarshal([]byte(query), &queryContent)
+	//if err != nil {
+	//	return []string{""}
+	//}
+	//selector := queryContent.Selector
+	//keys := gjson.Get(selector, "@keys")
+	//for i, key := range keys.Array() {
+	//	keyString := key.String()
+	//	query := gjson.Get(selector, keyString)
+	//}
 	return []string{"0x11111"}
 }
 

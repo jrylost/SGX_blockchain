@@ -178,8 +178,11 @@ func (m *MainHandler) ContractCallHandler(w http.ResponseWriter, r *http.Request
 		} else {
 			account.UnmarshalMsg(val)
 		}
-
 		contractAddress := gjson.GetBytes(body, "data.contractAddress").String()
+
+		_, txHash := account.CallContract(contractAddress)
+		txHashWith0x := utils.EncodeBytesToHexStringWith0x(txHash)
+
 		codeHash := gjson.GetBytes(body, "data.codeHash").String()
 		codeHashByte := utils.DecodeHexStringToBytesWith0x(codeHash)
 
@@ -240,7 +243,7 @@ func (m *MainHandler) ContractCallHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		virtualMachine := vm.NewVirtualMachine(contractContent)
-		results, newctx, err := virtualMachine.Call(string(addressCompressed), abi.ContractName, functionName, contractContent, inputs, ctx)
+		results, newctx, err := virtualMachine.Call(string(addressCompressed), txHashWith0x, abi.ContractName, functionName, contractContent, inputs, ctx)
 		if err != nil {
 			w.WriteHeader(http.StatusOK)
 			errorString, _ := sjson.Set(WrongResponse, "error", err.Error())
@@ -262,8 +265,6 @@ func (m *MainHandler) ContractCallHandler(w http.ResponseWriter, r *http.Request
 		//	w.Write([]byte(WrongResponse))
 		//}
 		ctime := time.Now().UnixMilli()
-		_, txHash := account.CallContract(contractAddress)
-		txHashWith0x := utils.EncodeBytesToHexStringWith0x(txHash)
 
 		resp := &ContractCallResponse{
 			Status: "ok",
